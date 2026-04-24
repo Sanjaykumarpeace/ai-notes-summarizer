@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>AI Notes Summarizer</title>
+    </head>
+    <body>
+        <h1>AI Notes Summarizer</h1>
+        <form action=""/summarize" method="post">
+            <textarea name=""text' rows=""10' cols=""50 placeholder="Enter your notes here..."></textarea><br><br>
+            <button type="submit">Summarize</button>
+    </form>
+    {% if summary %}
+        <h2>Summary:</h2>
+        <p>{{ summary }}</p>
+    {% endif %}
+    </body>
+</html>
