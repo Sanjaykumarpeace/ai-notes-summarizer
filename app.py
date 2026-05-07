@@ -10,7 +10,10 @@ from functools import wraps
 from html import escape
 from urllib.parse import parse_qs, urlparse
 
-from docx import Document
+try:
+    from docx import Document  # type: ignore
+except ImportError:
+    Document = None
 from flask import (
     Flask,
     flash,
@@ -23,13 +26,29 @@ from flask import (
     url_for,
 )
 from google import genai
-from PyPDF2 import PdfReader
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+try:
+    from PyPDF2 import PdfReader  # type: ignore
+except ImportError:
+    PdfReader = None
+
+try:
+    from reportlab.lib.pagesizes import letter  # type: ignore
+    from reportlab.lib.styles import getSampleStyleSheet  # type: ignore
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer  # type: ignore
+except ImportError:
+    letter = None
+    getSampleStyleSheet = None
+    Paragraph = None
+    SimpleDocTemplate = None
+    Spacer = None
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from youtube_transcript_api import YouTubeTranscriptApi
+
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
+except ImportError:
+    YouTubeTranscriptApi = None
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(APP_DIR, "smart_notes.db")
