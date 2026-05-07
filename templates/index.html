@@ -1,23 +1,1081 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>AI Notes Summarizer</title>
-    </head>
-    <body>
-        <h1>AI Notes Summarizer</h1>
-        <form action="/summarize" method="post">
-            <textarea name="text" rows="10" cols="50" placeholder="Enter your notes here..."></textarea><br><br>
-            <label>Select Mode:</label>
-        <select name="mode">
-        <option value="summary">Summary</option>
-        <option value="teacher">Explain like Friend</option>
-        <option value="exam">Exam Points</option>
-        </select><br><br>
-            <button type="submit">Summarize</button>
-    </form>
-    {% if summary %}
-        <h2>Summary:</h2>
-        <p>{{ summary }}</p>
-    {% endif %}
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Notes Studio</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --surface-2: #edf3f7;
+            --surface-3: #e2ebf1;
+            --text: #111a24;
+            --muted: #617086;
+            --line: #d5e0e8;
+            --brand: #087a78;
+            --brand-dark: #055c5b;
+            --accent: #d85f3f;
+            --success: #177a50;
+            --danger: #b42318;
+            --shadow: 0 20px 50px rgba(26, 39, 55, 0.12);
+        }
+
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg: #10151a;
+            --surface: #171e25;
+            --surface-2: #202a33;
+            --surface-3: #26323d;
+            --text: #edf3f8;
+            --muted: #9bacba;
+            --line: #31404c;
+            --brand: #40b9b2;
+            --brand-dark: #78d8d2;
+            --accent: #f08465;
+            --success: #61d39d;
+            --danger: #ff9288;
+            --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-width: 320px;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 280px),
+                var(--bg);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.45;
+        }
+
+        body,
+        button,
+        input,
+        textarea,
+        select {
+            font-size: 16px;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .app-shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 304px minmax(0, 1fr);
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: auto;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            background: rgba(255, 255, 255, 0.82);
+            border-right: 1px solid var(--line);
+            backdrop-filter: blur(14px);
+        }
+
+        [data-theme="dark"] .sidebar {
+            background: rgba(23, 30, 37, 0.9);
+        }
+
+        .main {
+            min-width: 0;
+            padding: 34px;
+        }
+
+        .main-inner {
+            max-width: 1260px;
+            margin: 0 auto;
+        }
+
+        .brand {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 42px;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            color: #fff;
+            background: var(--brand);
+            font-weight: 800;
+        }
+
+        .brand-copy {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .brand-copy h1 {
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brand-copy span {
+            display: block;
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .icon-btn,
+        .secondary-btn,
+        .primary-btn {
+            min-height: 42px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .icon-btn {
+            width: 42px;
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+            color: var(--text);
+            font-weight: 800;
+        }
+
+        .primary-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--brand);
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .secondary-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 750;
+        }
+
+        .icon-btn:hover,
+        .primary-btn:hover,
+        .secondary-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .sidebar-card {
+            padding: 14px;
+        }
+
+        .sidebar-card strong,
+        .auth-box strong {
+            display: block;
+            font-size: 0.92rem;
+        }
+
+        .sidebar-card p,
+        .auth-box p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .auth-box {
+            padding: 14px;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 9px;
+            margin-top: 12px;
+        }
+
+        .auth-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .history-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .history-item {
+            display: grid;
+            gap: 5px;
+            padding: 12px;
+            color: var(--text);
+            text-decoration: none;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            min-width: 0;
+        }
+
+        .history-item:hover {
+            border-color: var(--brand);
+        }
+
+        .history-item strong {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .history-item span {
+            color: var(--muted);
+            font-size: 0.78rem;
+            overflow-wrap: anywhere;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: start;
+            margin-bottom: 22px;
+        }
+
+        .hero h2 {
+            margin: 0;
+            max-width: 940px;
+            font-size: 2.35rem;
+            line-height: 1.08;
+        }
+
+        .hero p {
+            max-width: 780px;
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: 1.02rem;
+            line-height: 1.65;
+        }
+
+        .hero-badge {
+            padding: 8px 11px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--brand-dark);
+            font-size: 0.82rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .workspace,
+        .result-panel,
+        .chat-panel {
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 20px 20px 0;
+        }
+
+        .panel-head h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .panel-head p {
+            margin: 7px 0 0;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        form {
+            margin: 0;
+        }
+
+        .form-body,
+        .panel-body {
+            padding: 20px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        label {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            min-width: 0;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 12px 13px;
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+
+        textarea {
+            min-height: 250px;
+            resize: vertical;
+            line-height: 1.55;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(8, 122, 120, 0.16);
+            background: var(--surface);
+        }
+
+        input:disabled,
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.58;
+        }
+
+        .segmented {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .segment {
+            min-height: 46px;
+            padding: 9px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-2);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .segment.active {
+            border-color: var(--brand);
+            background: rgba(8, 122, 120, 0.12);
+            color: var(--brand-dark);
+        }
+
+        .source-panel {
+            display: none;
+        }
+
+        .source-panel.active {
+            display: grid;
+            gap: 14px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .task-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .radio-card {
+            position: relative;
+            min-width: 0;
+        }
+
+        .radio-card input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .radio-card span {
+            min-height: 46px;
+            display: grid;
+            place-items: center;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-2);
+            color: var(--text);
+            text-align: center;
+            font-size: 0.88rem;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .radio-card input:checked + span {
+            border-color: var(--brand);
+            background: rgba(8, 122, 120, 0.12);
+            color: var(--brand-dark);
+        }
+
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pill {
+            max-width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--surface-2);
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .summary-output,
+        .empty-state,
+        .chat-answer {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-2);
+        }
+
+        .summary-output {
+            max-height: 520px;
+            overflow: auto;
+            padding: 16px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            line-height: 1.65;
+        }
+
+        .empty-state {
+            min-height: 270px;
+            display: grid;
+            place-items: center;
+            padding: 22px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .empty-state strong {
+            display: block;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .result-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chat-panel {
+            margin-top: 20px;
+        }
+
+        .chat-answer {
+            padding: 15px;
+            line-height: 1.58;
+            overflow-wrap: anywhere;
+        }
+
+        .chat-answer p {
+            margin-bottom: 0;
+            white-space: pre-wrap;
+        }
+
+        .flash-stack {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 20;
+            display: grid;
+            gap: 10px;
+            max-width: min(420px, calc(100vw - 36px));
+        }
+
+        .flash {
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .flash.success {
+            color: var(--success);
+            border-color: rgba(23, 122, 80, 0.34);
+        }
+
+        .flash.error {
+            color: var(--danger);
+            border-color: rgba(180, 35, 24, 0.34);
+        }
+
+        @media (max-width: 1120px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+                height: auto;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .main {
+                padding: 24px;
+            }
+
+            .history-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            body,
+            button,
+            input,
+            textarea,
+            select {
+                font-size: 15px;
+            }
+
+            .sidebar,
+            .main {
+                padding: 16px;
+            }
+
+            .brand {
+                grid-template-columns: minmax(0, 1fr) 42px;
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h2 {
+                font-size: 1.8rem;
+                line-height: 1.14;
+            }
+
+            .hero p {
+                font-size: 0.98rem;
+            }
+
+            .segmented,
+            .control-grid,
+            .task-grid,
+            .history-list {
+                grid-template-columns: 1fr;
+            }
+
+            .panel-head,
+            .form-body,
+            .panel-body {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flash-stack" id="flashStack"></div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-copy">
+                    <div class="brand-mark">SN</div>
+                    <div>
+                        <h1>Smart Notes Studio</h1>
+                        <span>Study workspace</span>
+                    </div>
+                </div>
+                <button class="icon-btn" id="themeToggle" type="button" title="Toggle dark mode">DM</button>
+            </div>
+
+            <div class="card sidebar-card" id="userCard">
+                <strong>Guest workspace</strong>
+                <p>Create an account to keep summaries and revisit study sessions.</p>
+                <form action="/logout" method="post" class="hidden" id="logoutForm" style="margin-top: 12px;">
+                    <button class="secondary-btn" type="submit">Sign out</button>
+                </form>
+            </div>
+
+            <div class="card auth-box" id="authBox">
+                <strong>Account</strong>
+                <p>Save summaries, history, exports, and note chat sessions locally.</p>
+                <form class="auth-form" action="/login" method="post">
+                    <input name="username" placeholder="Username" autocomplete="username">
+                    <input name="password" type="password" placeholder="Password" autocomplete="current-password">
+                    <div class="auth-actions">
+                        <button class="primary-btn" type="submit">Log in</button>
+                        <button class="secondary-btn" formaction="/register" type="submit">Sign up</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="section-label">
+                <span>History</span>
+                <span id="historyCount">0</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="card sidebar-card">
+                    <strong>No saved notes yet</strong>
+                    <p>Your generated summaries will appear here after you sign in.</p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="main-inner">
+                <header class="hero">
+                    <div>
+                        <h2>Chat, summarize, quiz, and revise from your notes.</h2>
+                        <p>Upload a PDF or DOCX, paste raw notes, or use a YouTube transcript. Choose a study mode and tone, then turn the source into revision-ready material.</p>
+                    </div>
+                    <div class="hero-badge">Smart Study Mode</div>
+                </header>
+
+                <div class="workspace-grid">
+                    <section class="card workspace">
+                        <div class="panel-head">
+                            <h3>Create study material</h3>
+                            <p>Pick one source, tune the output, and generate a clean study asset.</p>
+                        </div>
+
+                        <form action="/summarize" method="post" enctype="multipart/form-data">
+                            <div class="form-body">
+                                <div class="field">
+                                    <label for="title">Title</label>
+                                    <input id="title" name="title" placeholder="Biology chapter 4, cloud notes, lecture recap">
+                                </div>
+
+                                <div class="field">
+                                    <label>Input source</label>
+                                    <input type="hidden" name="source_type" id="sourceType" value="text">
+                                    <div class="segmented" role="tablist">
+                                        <button class="segment active" type="button" data-source="text">Text</button>
+                                        <button class="segment" type="button" data-source="file">PDF/DOCX</button>
+                                        <button class="segment" type="button" data-source="youtube">YouTube</button>
+                                    </div>
+                                </div>
+
+                                <div class="source-panel active" data-panel="text">
+                                    <div class="field">
+                                        <label for="text">Notes</label>
+                                        <textarea id="text" name="text" placeholder="Paste your notes here..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="source-panel" data-panel="file">
+                                    <div class="field">
+                                        <label for="notes_file">Upload PDF or DOCX</label>
+                                        <input id="notes_file" name="notes_file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                                    </div>
+                                </div>
+
+                                <div class="source-panel" data-panel="youtube">
+                                    <div class="field">
+                                        <label for="youtube_url">YouTube link</label>
+                                        <input id="youtube_url" name="youtube_url" type="url" placeholder="https://www.youtube.com/watch?v=...">
+                                    </div>
+                                </div>
+
+                                <div class="control-grid">
+                                    <div class="field">
+                                        <label for="tone">Tone</label>
+                                        <select id="tone" name="tone">
+                                            <option value="beginner">Beginner</option>
+                                            <option value="technical">Technical</option>
+                                            <option value="story">Story mode</option>
+                                            <option value="bullets">Bullet points</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label for="taskSelect">Quick mode</label>
+                                        <select id="taskSelect" name="task">
+                                            <option value="summary">Summary</option>
+                                            <option value="teacher">Tutor</option>
+                                            <option value="exam">Exam points</option>
+                                            <option value="flashcards">Flashcards</option>
+                                            <option value="quiz">Quiz</option>
+                                            <option value="mcq">MCQs</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="field">
+                                    <label>Smart Study Mode</label>
+                                    <div class="task-grid" id="taskGrid">
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="summary" checked>
+                                            <span>Summary</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="teacher">
+                                            <span>Tutor</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="exam">
+                                            <span>Exam points</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="flashcards">
+                                            <span>Flashcards</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="quiz">
+                                            <span>Quiz</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="task_card" value="mcq">
+                                            <span>MCQs</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button class="primary-btn" type="submit">Generate</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section class="result-stack">
+                        <div class="card result-panel">
+                            <div class="panel-head">
+                                <h3>Result</h3>
+                                <p>Use copy or export after a summary has been generated.</p>
+                            </div>
+                            <div class="panel-body" id="resultBody">
+                                <div class="empty-state">
+                                    <div>
+                                        <strong>Your generated notes will appear here.</strong>
+                                        <span>Start with text, a document, or a YouTube link.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card chat-panel">
+                            <div class="panel-head">
+                                <h3>Chat with notes</h3>
+                                <p>Ask focused questions about the selected note source.</p>
+                            </div>
+                            <form action="/chat" method="post">
+                                <div class="form-body">
+                                    <input type="hidden" name="summary_id" id="chatSummaryId">
+                                    <div class="field">
+                                        <label for="question">Question</label>
+                                        <input id="question" name="question" placeholder="What are the most testable concepts?" disabled>
+                                    </div>
+                                    <button class="secondary-btn" id="askButton" type="submit" disabled>Ask</button>
+                                    <div id="chatOutput"></div>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="application/json" id="serverState">{{ state_json|safe }}</script>
+    <script>
+        const fallbackState = {
+            user: null,
+            history: [],
+            selected_summary: null,
+            chat: null,
+            messages: [],
+            tone_labels: {
+                beginner: "Beginner",
+                technical: "Technical",
+                story: "Story mode",
+                bullets: "Bullet points"
+            },
+            task_labels: {
+                summary: "Summary",
+                teacher: "Tutor",
+                exam: "Exam points",
+                flashcards: "Flashcards",
+                quiz: "Quiz",
+                mcq: "MCQs"
+            }
+        };
+
+        function readServerState() {
+            const node = document.getElementById("serverState");
+            if (!node) return fallbackState;
+
+            try {
+                const parsed = JSON.parse(node.textContent.trim());
+                return { ...fallbackState, ...parsed };
+            } catch {
+                return fallbackState;
+            }
+        }
+
+        const state = readServerState();
+        const root = document.documentElement;
+        const storedTheme = localStorage.getItem("smart-notes-theme");
+
+        if (storedTheme) {
+            root.dataset.theme = storedTheme;
+        }
+
+        document.getElementById("themeToggle").addEventListener("click", () => {
+            const next = root.dataset.theme === "dark" ? "light" : "dark";
+            root.dataset.theme = next;
+            localStorage.setItem("smart-notes-theme", next);
+        });
+
+        function labelFor(map, value) {
+            return map[value] || value || "Unknown";
+        }
+
+        function makeElement(tag, className, text) {
+            const element = document.createElement(tag);
+            if (className) element.className = className;
+            if (text !== undefined) element.textContent = text;
+            return element;
+        }
+
+        function renderMessages() {
+            const stack = document.getElementById("flashStack");
+            stack.innerHTML = "";
+            state.messages.forEach((item) => {
+                const flash = makeElement("div", `flash ${item.category || ""}`, item.message);
+                stack.appendChild(flash);
+            });
+
+            if (state.messages.length) {
+                setTimeout(() => {
+                    stack.innerHTML = "";
+                }, 4500);
+            }
+        }
+
+        function renderUser() {
+            const userCard = document.getElementById("userCard");
+            const authBox = document.getElementById("authBox");
+            const logoutForm = document.getElementById("logoutForm");
+
+            if (state.user) {
+                userCard.querySelector("strong").textContent = state.user.username;
+                userCard.querySelector("p").textContent = "Summaries are saved to your private history on this device.";
+                authBox.classList.add("hidden");
+                logoutForm.classList.remove("hidden");
+            } else {
+                userCard.querySelector("strong").textContent = "Guest workspace";
+                userCard.querySelector("p").textContent = "Create an account to keep summaries and revisit study sessions.";
+                authBox.classList.remove("hidden");
+                logoutForm.classList.add("hidden");
+            }
+        }
+
+        function renderHistory() {
+            const list = document.getElementById("historyList");
+            const count = document.getElementById("historyCount");
+            list.innerHTML = "";
+            count.textContent = state.history.length;
+
+            if (!state.history.length) {
+                const empty = makeElement("div", "card sidebar-card");
+                empty.appendChild(makeElement("strong", "", "No saved notes yet"));
+                empty.appendChild(makeElement("p", "", "Your generated summaries will appear here after you sign in."));
+                list.appendChild(empty);
+                return;
+            }
+
+            state.history.forEach((item) => {
+                const link = makeElement("a", "history-item");
+                link.href = `/?summary_id=${encodeURIComponent(item.id)}`;
+                link.appendChild(makeElement("strong", "", item.title || "Untitled notes"));
+                link.appendChild(makeElement(
+                    "span",
+                    "",
+                    `${labelFor(state.task_labels, item.task)} / ${labelFor(state.tone_labels, item.tone)}`
+                ));
+                list.appendChild(link);
+            });
+        }
+
+        function renderResult() {
+            const resultBody = document.getElementById("resultBody");
+            const note = state.selected_summary;
+            resultBody.innerHTML = "";
+
+            if (!note) {
+                const empty = makeElement("div", "empty-state");
+                const inner = makeElement("div");
+                inner.appendChild(makeElement("strong", "", "Your generated notes will appear here."));
+                inner.appendChild(makeElement("span", "", "Start with text, a document, or a YouTube link."));
+                empty.appendChild(inner);
+                resultBody.appendChild(empty);
+                return;
+            }
+
+            const meta = makeElement("div", "result-meta");
+            [
+                note.title || "Untitled notes",
+                labelFor(state.task_labels, note.task),
+                labelFor(state.tone_labels, note.tone),
+                note.source_type || "source"
+            ].forEach((value) => meta.appendChild(makeElement("span", "pill", value)));
+
+            const output = makeElement("div", "summary-output");
+            output.id = "summaryOutput";
+            output.textContent = note.output || "";
+
+            const actions = makeElement("div", "result-actions");
+            const copy = makeElement("button", "secondary-btn", "Copy");
+            copy.type = "button";
+            copy.addEventListener("click", async () => {
+                await navigator.clipboard.writeText(output.innerText);
+                copy.textContent = "Copied";
+                setTimeout(() => copy.textContent = "Copy", 1400);
+            });
+
+            const exportLink = makeElement("a", "secondary-btn", "Download PDF");
+            exportLink.href = `/export/${encodeURIComponent(note.id)}.pdf`;
+
+            actions.appendChild(copy);
+            actions.appendChild(exportLink);
+            resultBody.appendChild(meta);
+            resultBody.appendChild(output);
+            resultBody.appendChild(actions);
+        }
+
+        function renderChat() {
+            const note = state.selected_summary;
+            const input = document.getElementById("question");
+            const button = document.getElementById("askButton");
+            const hidden = document.getElementById("chatSummaryId");
+            const output = document.getElementById("chatOutput");
+
+            hidden.value = note ? note.id : "";
+            input.disabled = !note;
+            button.disabled = !note;
+            output.innerHTML = "";
+
+            if (state.chat) {
+                const answer = makeElement("div", "chat-answer");
+                answer.appendChild(makeElement("strong", "", state.chat.question || "Question"));
+                answer.appendChild(makeElement("p", "", state.chat.answer || ""));
+                output.appendChild(answer);
+            }
+        }
+
+        const sourceInput = document.getElementById("sourceType");
+        document.querySelectorAll("[data-source]").forEach((button) => {
+            button.addEventListener("click", () => {
+                sourceInput.value = button.dataset.source;
+                document.querySelectorAll("[data-source]").forEach((item) => item.classList.remove("active"));
+                document.querySelectorAll("[data-panel]").forEach((item) => item.classList.remove("active"));
+                button.classList.add("active");
+                document.querySelector(`[data-panel="${button.dataset.source}"]`).classList.add("active");
+            });
+        });
+
+        const taskSelect = document.getElementById("taskSelect");
+        document.querySelectorAll('input[name="task_card"]').forEach((radio) => {
+            radio.addEventListener("change", () => {
+                taskSelect.value = radio.value;
+            });
+        });
+
+        taskSelect.addEventListener("change", () => {
+            const target = document.querySelector(`input[name="task_card"][value="${taskSelect.value}"]`);
+            if (target) target.checked = true;
+        });
+
+        renderMessages();
+        renderUser();
+        renderHistory();
+        renderResult();
+        renderChat();
+    </script>
+</body>
 </html>
